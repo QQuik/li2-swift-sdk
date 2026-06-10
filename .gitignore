@@ -1,1 +1,5 @@
-.DS_Store\n.build/\n*.xcodeproj\nxcuserdata/\n.swiftpm/
+.DS_Store
+.build/
+*.xcodeproj
+xcuserdata/
+.swiftpm/
