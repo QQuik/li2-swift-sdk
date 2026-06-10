@@ -101,6 +101,15 @@ public final class Li2DeepLinkManager: ObservableObject {
         Task { await runRawProbeOptIn() }
     }
 
+    // MARK: - Bindings (for UIKit / manual SwiftUI wiring)
+
+    /// A `Binding<Bool>` for `isConsentPending` suitable for `fullScreenCover`.
+    /// The setter is a no-op — the sheet is dismissed internally by `submitOptOut()`
+    /// or `submitPasteControlResult(_:)`, never by the SwiftUI gesture.
+    public var isConsentPendingBinding: Binding<Bool> {
+        Binding(get: { self.isConsentPending }, set: { _ in })
+    }
+
     // MARK: - clickId persistence (for trackLead / trackSale auto-fill)
 
     /// Returns the persisted `clickId` if still within its TTL, otherwise `""`.
