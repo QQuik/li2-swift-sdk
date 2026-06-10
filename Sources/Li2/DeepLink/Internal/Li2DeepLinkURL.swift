@@ -27,12 +27,4 @@ enum Li2DeepLinkURL {
         return components.url ?? URL(string: raw)
     }
 
-    /// Returns the `li2_cid` value from a URL's query items, if present.
-    static func extractClickId(from url: URL) -> String? {
-        URLComponents(url: url, resolvingAgainstBaseURL: false)?
-            .queryItems?
-            .first(where: { $0.name == cidParam })?
-            .value
-            .flatMap { $0.isEmpty ? nil : $0 }
-    }
 }

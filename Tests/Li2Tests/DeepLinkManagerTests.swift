@@ -48,15 +48,6 @@ final class Li2DeepLinkURLTests: XCTestCase {
         XCTAssertEqual(Li2DeepLinkURL.sanitizedDestination(raw)?.absoluteString, raw)
     }
 
-    func test_extractClickId_returnsValue() {
-        let url = URL(string: "https://deep.li2.link/sale?li2_cid=abc123")!
-        XCTAssertEqual(Li2DeepLinkURL.extractClickId(from: url), "abc123")
-    }
-
-    func test_extractClickId_returnsNil_whenAbsent() {
-        let url = URL(string: "https://deep.li2.link/sale")!
-        XCTAssertNil(Li2DeepLinkURL.extractClickId(from: url))
-    }
 }
 
 // MARK: - TrackOpen wire types
@@ -65,8 +56,7 @@ final class TrackOpenModelTests: XCTestCase {
 
     func test_request_encodesOnlyProvidedFields() throws {
         let req = TrackOpenRequest(deepLink: "https://deep.li2.link/sale")
-        let json = try JSONSerialization.jsonObject(
-            with: JSONEncoder().encode(req)) as? [String: Any]
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(req)) as? [String: Any]
         XCTAssertEqual(json?["deepLink"] as? String, "https://deep.li2.link/sale")
         XCTAssertNil(json?["li2Domains"])
         XCTAssertNil(json?["clipboardStatus"])

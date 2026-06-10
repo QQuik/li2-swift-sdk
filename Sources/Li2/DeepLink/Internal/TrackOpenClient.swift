@@ -1,14 +1,18 @@
 import Foundation
 
+enum ClipboardStatus: String, Encodable {
+    case read, empty, denied, optout
+}
+
 struct TrackOpenRequest: Encodable {
     let deepLink: String?
     let li2Domains: [String]?
-    let clipboardStatus: String?
+    let clipboardStatus: ClipboardStatus?
 
     init(
         deepLink: String? = nil,
         li2Domains: [String]? = nil,
-        clipboardStatus: String? = nil
+        clipboardStatus: ClipboardStatus? = nil
     ) {
         self.deepLink = deepLink
         self.li2Domains = li2Domains
@@ -86,8 +90,3 @@ struct TrackOpenClient {
     }
 }
 
-private extension String {
-    func trimmingTrailingSlashes() -> String {
-        var s = self; while s.hasSuffix("/") { s.removeLast() }; return s
-    }
-}

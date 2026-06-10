@@ -35,8 +35,7 @@ public struct Li2ConsentView<Header: View>: View {
     private let header: Header
 
     @ObservedObject private var manager = Li2DeepLinkManager.shared
-    @State private var hasClipboardContent = false
-    @State private var isProbing = true
+    @State private var hasClipboardContent = ClipboardProber.hasContent()
 
     public init(
         title: String = "Continue where you left off",
@@ -68,12 +67,7 @@ public struct Li2ConsentView<Header: View>: View {
             }
             .padding(.horizontal, 32)
 
-            if isProbing {
-                ProgressView()
-                    .padding()
-            } else {
-                clipboardAction
-            }
+            clipboardAction
 
             if showSkipButton {
                 Button("Not now") {
@@ -86,7 +80,10 @@ public struct Li2ConsentView<Header: View>: View {
             Spacer()
         }
         .padding()
-        .task { probe() }
+        .onAppear { hasClipboardContent = ClipboardProber.hasContent() }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            hasClipboardContent = ClipboardProber.hasContent()
+        }
     }
 
     @ViewBuilder
@@ -121,11 +118,6 @@ public struct Li2ConsentView<Header: View>: View {
         .padding(.horizontal, 32)
     }
 
-    private func probe() {
-        // hasStrings/hasURLs are permission-free on all iOS versions
-        hasClipboardContent = ClipboardProber.hasContent()
-        isProbing = false
-    }
 }
 
 // Convenience init with no header

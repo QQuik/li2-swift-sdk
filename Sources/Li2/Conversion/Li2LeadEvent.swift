@@ -40,7 +40,7 @@ public struct Li2LeadEvent {
     public var phone: String?
     public var name: String?
 
-    /// Maps to `"avatar"` on the wire (not `"avatar_url"`).
+    /// Maps to `"avatar_url"` on the wire.
     public var avatarURL: String?
 
     public var metadata: [String: Any]?

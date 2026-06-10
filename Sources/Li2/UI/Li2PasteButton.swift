@@ -101,12 +101,11 @@ public final class _Li2PasteReceiverView: UIView {
     }
 
     public override func paste(itemProviders: [NSItemProvider]) {
-        guard let provider = itemProviders.first else { deliver(nil); return }
-        if provider.canLoadObject(ofClass: NSURL.self) {
+        if let provider = itemProviders.first(where: { $0.canLoadObject(ofClass: NSURL.self) }) {
             provider.loadObject(ofClass: NSURL.self) { [weak self] obj, _ in
                 self?.deliver((obj as? URL)?.absoluteString)
             }
-        } else if provider.canLoadObject(ofClass: NSString.self) {
+        } else if let provider = itemProviders.first(where: { $0.canLoadObject(ofClass: NSString.self) }) {
             provider.loadObject(ofClass: NSString.self) { [weak self] obj, _ in
                 self?.deliver((obj as? NSString) as String?)
             }

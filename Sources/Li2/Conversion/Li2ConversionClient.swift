@@ -62,12 +62,6 @@ final class Li2ConversionClient {
     static let shared = Li2ConversionClient()
     private init() {}
 
-    private static let encoder: JSONEncoder = {
-        let e = JSONEncoder()
-        e.keyEncodingStrategy = .convertToSnakeCase
-        return e
-    }()
-
     private static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
@@ -101,7 +95,7 @@ final class Li2ConversionClient {
         if let v = event.email,        !v.isEmpty { body["email"] = v }
         if let v = event.phone,        !v.isEmpty { body["phone"] = v }
         if let v = event.name,         !v.isEmpty { body["name"] = v }
-        if let v = event.avatarURL,    !v.isEmpty { body["avatar"] = v }
+        if let v = event.avatarURL,    !v.isEmpty { body["avatar_url"] = v }
         if let v = event.metadata                 { body["metadata"] = v }
 
         let dto: LeadResponseDTO = try await post(path: "/track/lead", body: body, config: config)
@@ -175,8 +169,3 @@ final class Li2ConversionClient {
     }
 }
 
-private extension String {
-    func trimmingTrailingSlashes() -> String {
-        var s = self; while s.hasSuffix("/") { s.removeLast() }; return s
-    }
-}

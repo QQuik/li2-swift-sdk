@@ -27,10 +27,6 @@ public final class Li2DeepLinkManager: ObservableObject {
 
     // MARK: - Private
 
-    private enum ClipboardStatus: String {
-        case read, empty, denied, optout
-    }
-
     private static let firstLaunchRanKey = "ai.li2.firstLaunchRan"
     private static let clickIdKey = "ai.li2.lastClickId"
     private static let clickIdExpiresAtKey = "ai.li2.lastClickIdExpiresAt"
@@ -40,11 +36,6 @@ public final class Li2DeepLinkManager: ObservableObject {
     private var didReceiveURL = false
 
     private var config: Li2Config? { Li2.shared.config }
-
-    private func makeClient() -> TrackOpenClient? {
-        guard let c = config else { return nil }
-        return TrackOpenClient(baseURL: c.apiBaseURL, publishableKey: c.publishableKey)
-    }
 
     // MARK: - Immediate path (Universal Link / custom scheme)
 
@@ -87,7 +78,7 @@ public final class Li2DeepLinkManager: ObservableObject {
     public func submitPasteControlResult(_ raw: String?) {
         markConsentResolved()
         let trimmed = (raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        Task { await routeOptInClipboard(trimmed: trimmed, deniedOnEmpty: false) }
+        Task { await routeOptInClipboard(trimmed: trimmed) }
     }
 
     /// Call when the user taps "Skip" / "Not now" on the consent screen.
@@ -97,7 +88,7 @@ public final class Li2DeepLinkManager: ObservableObject {
         Task {
             await call(TrackOpenRequest(
                 li2Domains: domains,
-                clipboardStatus: ClipboardStatus.optout.rawValue
+                clipboardStatus: .optout
             ))
         }
     }
@@ -127,7 +118,7 @@ public final class Li2DeepLinkManager: ObservableObject {
         return stored
     }
 
-    nonisolated func persistClickId(_ clickId: String) {
+    func persistClickId(_ clickId: String) {
         let days = config?.clickIdExpiryDays ?? 30
         let expiry = Date().addingTimeInterval(TimeInterval(days * 86400))
         UserDefaults.standard.set(clickId, forKey: Self.clickIdKey)
@@ -147,37 +138,28 @@ public final class Li2DeepLinkManager: ObservableObject {
         let trimmed = ClipboardProber.readString() ?? ""
 
         if trimmed.isEmpty {
-            let status: ClipboardStatus = hadContent ? .denied : .empty
-            await call(TrackOpenRequest(li2Domains: domains, clipboardStatus: status.rawValue))
+            await call(TrackOpenRequest(li2Domains: domains, clipboardStatus: hadContent ? .denied : .empty))
             return
         }
-        await routeOptInClipboard(trimmed: trimmed, deniedOnEmpty: false)
+        await routeOptInClipboard(trimmed: trimmed)
     }
 
-    private func routeOptInClipboard(trimmed: String, deniedOnEmpty: Bool) async {
+    private func routeOptInClipboard(trimmed: String) async {
         guard let domains = config?.deepLinkDomains else { return }
         let request: TrackOpenRequest
         if trimmed.isEmpty {
-            request = TrackOpenRequest(
-                li2Domains: domains,
-                clipboardStatus: ClipboardStatus.empty.rawValue
-            )
+            request = TrackOpenRequest(li2Domains: domains, clipboardStatus: .empty)
         } else if let li2URL = Li2DeepLinkURL.parseLi2DeferredURL(trimmed) {
-            request = TrackOpenRequest(
-                deepLink: li2URL.absoluteString,
-                clipboardStatus: ClipboardStatus.read.rawValue
-            )
+            request = TrackOpenRequest(deepLink: li2URL.absoluteString, clipboardStatus: .read)
         } else {
-            request = TrackOpenRequest(
-                li2Domains: domains,
-                clipboardStatus: ClipboardStatus.read.rawValue
-            )
+            request = TrackOpenRequest(li2Domains: domains, clipboardStatus: .read)
         }
         await call(request)
     }
 
     private func call(_ request: TrackOpenRequest) async {
-        guard let client = makeClient() else { return }
+        guard let c = config else { return }
+        let client = TrackOpenClient(baseURL: c.apiBaseURL, publishableKey: c.publishableKey)
         isResolving = true
         defer { isResolving = false }
         do {
