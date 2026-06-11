@@ -21,7 +21,7 @@ struct Li2DeepLinkModifier: ViewModifier {
             .task {
                 manager.requestFirstLaunchConsentAfterGrace()
             }
-            .fullScreenCover(isPresented: $manager.isConsentPending) {
+            .fullScreenCover(isPresented: manager.isConsentPendingBinding) {
                 Li2ConsentView()
             }
             .onChange(of: manager.lastOutcome) { outcome in
