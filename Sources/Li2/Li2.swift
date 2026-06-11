@@ -10,7 +10,7 @@ public final class Li2 {
 
     // MARK: - Configuration
 
-    internal(set) var config: Li2Config?
+    var config: Li2Config?
 
     public static func configure(_ config: Li2Config) {
         shared.config = config

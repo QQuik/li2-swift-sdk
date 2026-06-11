@@ -1,6 +1,11 @@
 import SwiftUI
 import Combine
 
+// File-level constants: no actor isolation, accessible from nonisolated methods.
+private let _firstLaunchRanKey = "ai.li2.firstLaunchRan"
+private let _clickIdKey = "ai.li2.lastClickId"
+private let _clickIdExpiresAtKey = "ai.li2.lastClickIdExpiresAt"
+
 /// The deep link attribution engine. All public methods are safe to call from
 /// either the `.li2DeepLink {}` SwiftUI modifier or directly (UIKit / AppDelegate).
 ///
@@ -26,10 +31,6 @@ public final class Li2DeepLinkManager: ObservableObject {
     @Published public private(set) var lastOutcome: Li2DeepLinkOutcome?
 
     // MARK: - Private
-
-    private static let firstLaunchRanKey = "ai.li2.firstLaunchRan"
-    private static let clickIdKey = "ai.li2.lastClickId"
-    private static let clickIdExpiresAtKey = "ai.li2.lastClickIdExpiresAt"
 
     /// Set the moment a Universal Link arrives — prevents the deferred consent
     /// gate from firing when both arrive on the same launch.
@@ -68,7 +69,7 @@ public final class Li2DeepLinkManager: ObservableObject {
     /// `requestFirstLaunchConsentAfterGrace()` for app startup.
     public func requestFirstLaunchConsent() {
         guard !didReceiveURL else { return }
-        guard !UserDefaults.standard.bool(forKey: Self.firstLaunchRanKey) else { return }
+        guard !UserDefaults.standard.bool(forKey: _firstLaunchRanKey) else { return }
         isConsentPending = true
     }
 
@@ -120,8 +121,8 @@ public final class Li2DeepLinkManager: ObservableObject {
 
         // Auto-fill from UserDefaults
         guard
-            let stored = UserDefaults.standard.string(forKey: Self.clickIdKey),
-            let expiry = UserDefaults.standard.object(forKey: Self.clickIdExpiresAtKey) as? Date,
+            let stored = UserDefaults.standard.string(forKey: _clickIdKey),
+            let expiry = UserDefaults.standard.object(forKey: _clickIdExpiresAtKey) as? Date,
             Date() < expiry
         else { return "" }
         return stored
@@ -130,14 +131,14 @@ public final class Li2DeepLinkManager: ObservableObject {
     func persistClickId(_ clickId: String) {
         let days = config?.clickIdExpiryDays ?? 30
         let expiry = Date().addingTimeInterval(TimeInterval(days * 86400))
-        UserDefaults.standard.set(clickId, forKey: Self.clickIdKey)
-        UserDefaults.standard.set(expiry, forKey: Self.clickIdExpiresAtKey)
+        UserDefaults.standard.set(clickId, forKey: _clickIdKey)
+        UserDefaults.standard.set(expiry, forKey: _clickIdExpiresAtKey)
     }
 
     // MARK: - Private helpers
 
     private func markConsentResolved() {
-        UserDefaults.standard.set(true, forKey: Self.firstLaunchRanKey)
+        UserDefaults.standard.set(true, forKey: _firstLaunchRanKey)
         isConsentPending = false
     }
 
