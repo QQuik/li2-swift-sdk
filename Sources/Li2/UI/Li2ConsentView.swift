@@ -90,7 +90,7 @@ public struct Li2ConsentView<Header: View>: View {
     private var clipboardAction: some View {
         if #available(iOS 16, *) {
             if hasClipboardContent {
-                Li2PasteButton(displayMode: .labelAndIcon) { raw in
+                Li2PasteButton(displayMode: .iconAndLabel) { raw in
                     manager.submitPasteControlResult(raw)
                 }
                 .frame(height: 44)

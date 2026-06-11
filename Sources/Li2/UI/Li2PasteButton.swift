@@ -27,7 +27,7 @@ public struct Li2PasteButton: UIViewRepresentable {
     public var onPaste: (String?) -> Void
 
     public init(
-        displayMode: DisplayMode = .labelAndIcon,
+        displayMode: DisplayMode = .iconAndLabel,
         backgroundColor: UIColor = .tintColor,
         foregroundColor: UIColor = .white,
         onPaste: @escaping (String?) -> Void
