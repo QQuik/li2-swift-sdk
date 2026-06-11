@@ -88,18 +88,13 @@ public struct Li2ConsentView<Header: View>: View {
 
     @ViewBuilder
     private var clipboardAction: some View {
-        if #available(iOS 16, *) {
-            if hasClipboardContent {
-                Li2PasteButton(displayMode: .iconAndLabel) { raw in
-                    manager.submitPasteControlResult(raw)
-                }
-                .frame(height: 44)
-                .padding(.horizontal, 32)
-            } else {
-                continueButton
+        if hasClipboardContent {
+            Li2PasteButton(displayMode: .iconAndLabel) { raw in
+                manager.submitPasteControlResult(raw)
             }
+            .frame(height: 44)
+            .padding(.horizontal, 32)
         } else {
-            // iOS 14–15: UIPasteboard read triggers a passive banner (non-blocking)
             continueButton
         }
     }

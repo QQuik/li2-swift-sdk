@@ -14,7 +14,7 @@ import UniformTypeIdentifiers
 ///
 /// For the built-in consent UI with automatic iOS version handling, use
 /// `Li2ConsentView` instead.
-@available(iOS 16.0, *)
+
 public struct Li2PasteButton: UIViewRepresentable {
 
     /// Controls which elements of the system Paste button are shown.
@@ -79,7 +79,7 @@ public struct Li2PasteButton: UIViewRepresentable {
 /// UIView subclass that serves as the explicit `UIPasteControl.target`.
 /// Prefixed with `_Li2` to signal it is a semi-internal implementation detail —
 /// public only because UIKit requires it to be accessible to the view hierarchy.
-@available(iOS 16.0, *)
+
 public final class _Li2PasteReceiverView: UIView {
     var onPaste: ((String?) -> Void)?
 
