@@ -100,8 +100,13 @@ public struct Li2PasteButton: UIViewRepresentable {
 /// UIPasteConfigurationSupporting (via UIResponder); being named as the
 /// control's target — plus overriding canPaste(_:)/paste(itemProviders:) — is
 /// what enables it inside a SwiftUI fullScreenCover.
+///
+/// `public` ONLY because it is the `UIViewType` of the public `Li2PasteButton`
+/// representable, which Swift requires to be at least as accessible. It is an
+/// implementation detail: there is no public initializer, so customers cannot
+/// construct or use it directly.
 @available(iOS 16.0, *)
-final class PasteReceiverView: UIView {
+public final class PasteReceiverView: UIView {
     var onPaste: ((String?) -> Void)?
 
     override init(frame: CGRect) {
@@ -141,8 +146,11 @@ final class PasteReceiverView: UIView {
         }
     }
 
-    private func deliver(_ value: String?) {
-        DispatchQueue.main.async { [weak self] in self?.onPaste?(value) }
+    /// `nonisolated` because the NSItemProvider load callbacks run on a
+    /// background queue; we hop to the main actor here so `onPaste` (and any
+    /// SwiftUI state it touches) is always invoked on the main thread.
+    private nonisolated func deliver(_ value: String?) {
+        Task { @MainActor [weak self] in self?.onPaste?(value) }
     }
 }
 #endif
