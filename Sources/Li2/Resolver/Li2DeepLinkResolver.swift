@@ -56,10 +56,19 @@ public final class Li2DeepLinkResolver {
             baseURL: config.apiBaseURL,
             publishableKey: config.publishableKey
         )
+        // Real pasteboard on UIKit (raw-probe / iOS 15 path); NoOp on Linux so
+        // Core stays buildable there. NoOp would make `beginRawProbeOptIn`
+        // always report `empty`.
+        let pasteboard: any PasteboardReading
+        #if canImport(UIKit)
+        pasteboard = UIPasteboardReader()
+        #else
+        pasteboard = NoOpPasteboard()
+        #endif
         self.init(
             config: config,
             client: client,
-            pasteboard: NoOpPasteboard(),
+            pasteboard: pasteboard,
             clickIdStore: .shared,
             defaults: .standard,
             onOutcome: onOutcome
@@ -240,8 +249,9 @@ extension Li2DeepLinkResolver: ObservableObject {}
 
 // MARK: - No-op pasteboard for the public init on Linux
 
-/// Placeholder so the public `init` compiles on Linux.
-/// Task 4.3 provides `UIPasteboardReader` under `#if canImport(UIKit)`.
+/// Linux-only fallback so the public `init` compiles where there is no
+/// `UIPasteboard`. On UIKit platforms the public init uses `UIPasteboardReader`
+/// (UI/UIPasteboardReader.swift) instead, so the raw-probe path works.
 private struct NoOpPasteboard: PasteboardReading {
     var hasContent: Bool { false }
     func readString() -> String? { nil }
