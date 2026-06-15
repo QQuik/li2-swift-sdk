@@ -121,14 +121,14 @@ public final class PasteReceiverView: UIView {
 
     /// Drives the control's enabled state: the system calls this on the target
     /// with the live pasteboard's item providers each time it re-evaluates.
-    override func canPaste(_ itemProviders: [NSItemProvider]) -> Bool {
+    public override func canPaste(_ itemProviders: [NSItemProvider]) -> Bool {
         itemProviders.contains {
             $0.hasItemConformingToTypeIdentifier(UTType.url.identifier)
                 || $0.hasItemConformingToTypeIdentifier(UTType.plainText.identifier)
         }
     }
 
-    override func paste(itemProviders: [NSItemProvider]) {
+    public override func paste(itemProviders: [NSItemProvider]) {
         guard let provider = itemProviders.first else {
             deliver(nil)
             return
