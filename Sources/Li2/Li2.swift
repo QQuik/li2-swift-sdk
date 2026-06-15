@@ -40,4 +40,16 @@ public enum Li2: Sendable {
     public static var lastClickId: String? {
         ClickIdStore.shared.currentClickId
     }
+
+    // MARK: - Consent reset
+
+    /// Clears the first-launch consent gate so the next launch re-asks (or a
+    /// fresh `requestFirstLaunchConsentAfterGrace()` re-opens it this session).
+    ///
+    /// Intended for QA / a "re-ask deferred-link permission" settings affordance.
+    /// The gate's storage key is an SDK implementation detail — this method is
+    /// the supported way to clear it; do not write `UserDefaults` directly.
+    public static func resetFirstLaunchConsent() {
+        UserDefaults.standard.removeObject(forKey: Li2DeepLinkResolver.firstLaunchRanKey)
+    }
 }

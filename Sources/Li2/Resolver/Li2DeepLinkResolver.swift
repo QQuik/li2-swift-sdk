@@ -26,7 +26,12 @@ public final class Li2DeepLinkResolver {
 
     // MARK: - Private
 
-    private static let firstLaunchRanKey = "ai.li2.firstLaunchRan"
+    /// First-launch consent gate key. `internal` (not `private`) only so
+    /// `Li2.resetFirstLaunchConsent()` can clear it; never exposed publicly —
+    /// the key name is an implementation detail, the reset *behavior* is the API.
+    /// `nonisolated`: a constant string with no actor state, so the nonisolated
+    /// `Li2` facade can read it without hopping to the MainActor.
+    nonisolated static let firstLaunchRanKey = "ai.li2.firstLaunchRan"
 
     private let config: Li2Config
     private let client: any TrackOpenCalling
