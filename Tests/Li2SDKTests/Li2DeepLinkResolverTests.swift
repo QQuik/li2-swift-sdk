@@ -1,5 +1,5 @@
 import XCTest
-@testable import Li2
+@testable import Li2SDK
 
 // MARK: - Test doubles
 

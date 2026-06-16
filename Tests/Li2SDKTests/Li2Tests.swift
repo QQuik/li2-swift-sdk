@@ -1,5 +1,5 @@
 import XCTest
-@testable import Li2
+@testable import Li2SDK
 
 /// Tests for the top-level `Li2` facade. Kept separate from the resolver's
 /// injected-defaults tests because these methods operate on `.standard`.
