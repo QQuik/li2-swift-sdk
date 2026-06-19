@@ -8,9 +8,10 @@ fingerprinting, no IDFA, no ATT prompt.**
 - One import: `import Li2SDK`
 - The SDK **never navigates** — it hands you a resolved destination and your app routes.
 
-> Scope: this release does deep-link resolution only. Conversion tracking
-> (`trackLead`/`trackSale`) ships in a later module; until then,
-> `Li2.lastClickId` gives you the click id for manual attribution.
+> This release does deep-link resolution **and** conversion tracking
+> (`trackLead`/`trackSale`/`identify`) — a deep-link match persists a click id and
+> a later lead/sale auto-attributes to it. See
+> [Conversion tracking](#conversion-tracking-deep-link-attribution).
 
 ---
 
@@ -22,14 +23,14 @@ In Xcode: **File ▸ Add Package Dependencies…** and enter the repo URL:
 https://github.com/QQuik/li2-swift-sdk
 ```
 
-Pin to **Up to Next Major Version** from `0.1.0`. Then add the **`Li2SDK`**
+Pin to **Up to Next Major Version** from `0.2.0`. Then add the **`Li2SDK`**
 library product to your app target.
 
 Or in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/QQuik/li2-swift-sdk", from: "0.1.0")
+    .package(url: "https://github.com/QQuik/li2-swift-sdk", from: "0.2.0")
 ],
 targets: [
     .target(name: "YourApp", dependencies: [
@@ -289,8 +290,129 @@ consent, so iOS shows no permission alert at all.
 | `.failed(error)` | network/HTTP/parse error; degrade gracefully |
 
 **`Li2.lastClickId`.** After a match the click id is persisted (default 30 days).
-Read `Li2.lastClickId` to attribute a conversion manually until the conversion
-module ships.
+This is the **attribution bridge**: the conversion methods auto-read it, so an
+attributed lead/sale ties to the deep-link match with no manual plumbing. You can
+also read `Li2.lastClickId` directly if you ever need the raw click id.
+
+---
+
+## Conversion tracking (deep link attribution)
+
+Once a deep link is resolved, you can tie real business events — a signup, a
+purchase — back to the click that drove them. **The bridge is automatic:**
+
+```
+ deep-link match            persists                   auto-reads
+ (resolver .matched)  ──▶  Li2.lastClickId  ──▶  trackAttributedLead / trackAttributedSale
+                            (30-day TTL)            (no explicit clickId needed)
+```
+
+A `.matched` outcome persists the click id; an attributed lead/sale with **no
+`clickId` argument** reads it back, and the server joins the conversion to that
+visit / touch-point. You never thread a click id through your own code.
+
+> **Plan-gated.** Conversion tracking is a paid Li2 feature. If your org's plan
+> (or the specific link) doesn't have it enabled, every call returns **403** with
+> the reason in the error message.
+
+### Which method do I call?
+
+The API is **typed by intent** — pick the method, and the click-id rule is handled
+for you (no nil-vs-`""` footgun):
+
+| Do you have a clickId? | Do you have a user id? | Lead | Sale |
+|---|---|---|---|
+| No (or don't want attribution) | Yes | `trackDirectLead` | `trackDirectSale` |
+| Yes (from a deep-link match) | No (anonymous yet) | `trackAnonymousLead` | — |
+| Yes | Yes | `trackAttributedLead` | `trackAttributedSale` |
+
+- **Direct** variants never attribute — they send `click_id = ""` and require an
+  `externalId`. Use them when there was no deep link.
+- **Attributed / anonymous** variants default `clickId` to `Li2.lastClickId`. If
+  that's nil (no match has happened) they throw **`.noClickIdAvailable`
+  client-side, before any network call** — fire a deep-link match first, or call
+  the Direct variant.
+- `identify` bridges the **anonymous → identified** gap for sales (see below).
+
+### Lead
+
+```swift
+import Li2SDK
+
+// Direct: a known user, no deep-link attribution.
+let r = try await Li2.trackDirectLead(externalId: "user_42", eventName: "signup",
+                                      email: "a@b.com")
+print(r.customerId ?? "—")
+
+// Anonymous: attributed to a click, user not identified yet.
+// clickId defaults to Li2.lastClickId.
+try await Li2.trackAnonymousLead(eventName: "viewed_pricing")
+
+// Attributed: a known user AND a deep-link click.
+try await Li2.trackAttributedLead(externalId: "user_42", eventName: "signup")
+```
+
+### Sale
+
+`amount` is in **minor units (cents)** and must be **> 0** — the server rejects 0.
+`currency` is optional; omit it to use your org's default.
+
+```swift
+// Direct sale.
+let s = try await Li2.trackDirectSale(externalId: "user_42", amount: 4999)   // $49.99
+print(s.saleEventId ?? "—")
+
+// Attributed sale — auto-reads Li2.lastClickId, links the visit / touch-point.
+try await Li2.trackAttributedSale(externalId: "user_42", amount: 4999,
+                                  currency: "vnd")
+```
+
+### Identify (anonymous → identified)
+
+`identify` is **required** for the journey *anonymous lead → attributed sale*. A
+sale resolves its customer by `externalId` only — it has no anonymous-merge path —
+so without `identify` the anonymous lead and the sale land on **two separate
+profiles**. Calling `identify` first promotes the `anon_<clickId>` profile to your
+real user id, so the sale finds it:
+
+```swift
+// 1. Anonymous lead from a deep-link click → profile anon_<clickId>.
+try await Li2.trackAnonymousLead(eventName: "viewed_pricing")
+
+// 2. User signs in / signs up — promote the anonymous profile.
+try await Li2.identify(externalId: "user_42", email: "a@b.com")
+
+// 3. The sale now lands on the SAME profile.
+try await Li2.trackAttributedSale(externalId: "user_42", amount: 4999)
+```
+
+`externalId` must be **non-empty** — an empty id promotes nothing, so `identify`
+throws **`.missingExternalId`** before any network call. `clickId` defaults to
+`Li2.lastClickId` and throws `.noClickIdAvailable` if absent.
+
+> The *anonymous lead → attributed **lead*** journey does **not** need `identify`
+> — `trackAttributedLead` merges the anonymous profile on its own. `identify`
+> exists specifically to bridge the **sale** journey.
+
+> **Side-effect (by design):** `identify` writes a real `__identify__` lead row
+> and increments `lead_count`. This matches the JS SDK; there is no backend filter
+> for the sentinel.
+
+### Errors
+
+All conversion methods are `async throws` and throw `Li2ConversionError`:
+
+| Error | When | Fix |
+|---|---|---|
+| `.noClickIdAvailable` | attributed/anonymous/identify with no resolvable clickId | fire a deep-link match first, or use a Direct variant |
+| `.missingExternalId` | `identify` called with an empty `externalId` | pass the user's stable id |
+| `.httpError(403, msg)` | plan or per-link conversion_tracking disabled | enable the feature for the org/link |
+| `.httpError(400, msg)` | customer not found / missing field | supply `email`/`name`/`phone` to auto-create, or call `trackLead` first |
+| `.httpError(500, msg)` | server error | retry / contact Li2 |
+| `.decodeError`, `.network`, `.invalidURL` | transport / response problems | inspect the associated value |
+
+The first two throw **client-side with no network call** — a unit test asserts no
+request is made.
 
 ---
 
@@ -336,7 +458,43 @@ struct Li2PasteButton: UIViewRepresentable {
 extension View {
     func li2DeepLink(using: Li2DeepLinkResolver) -> some View   // SwiftUI only
 }
+
+// Conversion — all async throws, return a small result struct
+extension Li2 {
+    // Lead (3 types)
+    static func trackDirectLead(externalId: String, eventName: String? = nil,
+        email: String? = nil, name: String? = nil, phone: String? = nil,
+        metadata: [String: String]? = nil) async throws -> Li2LeadResult
+    static func trackAnonymousLead(eventName: String? = nil, clickId: String? = nil,
+        email: String? = nil, name: String? = nil, phone: String? = nil,
+        metadata: [String: String]? = nil) async throws -> Li2LeadResult
+    static func trackAttributedLead(externalId: String, eventName: String? = nil,
+        clickId: String? = nil, email: String? = nil, name: String? = nil,
+        phone: String? = nil, metadata: [String: String]? = nil) async throws -> Li2LeadResult
+
+    // Sale (2 types) — amount is minor units (cents), must be > 0
+    static func trackDirectSale(externalId: String, amount: Int, currency: String? = nil,
+        eventName: String? = nil, paymentProcessor: String? = nil, invoiceId: String? = nil,
+        email: String? = nil, name: String? = nil, phone: String? = nil,
+        avatarUrl: String? = nil, metadata: [String: String]? = nil) async throws -> Li2SaleResult
+    static func trackAttributedSale(externalId: String, amount: Int, clickId: String? = nil,
+        currency: String? = nil, eventName: String? = nil, paymentProcessor: String? = nil,
+        invoiceId: String? = nil, email: String? = nil, name: String? = nil,
+        phone: String? = nil, avatarUrl: String? = nil,
+        metadata: [String: String]? = nil) async throws -> Li2SaleResult
+
+    // Identify (anonymous → identified) — externalId must be non-empty
+    static func identify(externalId: String, email: String? = nil, name: String? = nil,
+        clickId: String? = nil) async throws -> Li2LeadResult
+}
+
+struct Li2LeadResult: Sendable { let customerId: String? }
+struct Li2SaleResult: Sendable { let saleEventId: String?; let customerId: String? }
 ```
+
+> The conversion methods also accept three trailing **defaulted** params
+> (`config`, `client`, `clickIdStore`) used only as a testing seam — you never
+> pass them; the signatures above compile verbatim.
 
 ### Config options
 
@@ -355,6 +513,10 @@ extension View {
   `.failed` for HTTP status + body.
 - **`Li2Error.unparsableDestination(raw:)`** — the server matched a link but its
   URL couldn't be parsed (delivered as `.failed`, not silently dropped).
+- **`Li2ConversionError`** — thrown by the conversion methods: `.noClickIdAvailable`,
+  `.missingExternalId`, `.httpError(Int, String)`, `.decodeError(String, String)`,
+  `.network(Error)`, `.invalidURL`. See
+  [Conversion tracking ▸ Errors](#errors).
 
 ### Troubleshooting
 
