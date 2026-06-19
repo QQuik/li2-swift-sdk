@@ -248,6 +248,27 @@ final class ConversionClientTests: XCTestCase {
 
     // MARK: - identify — sugar over attributed lead with __identify__ sentinel
 
+    func testIdentifyThrowsMissingExternalIdWhenEmpty() async {
+        let neverClient = NeverCalledClient()
+        let config = makeConfig()
+        do {
+            _ = try await Li2.identify(
+                externalId: "",
+                email: "a@b.com",
+                name: nil,
+                clickId: "id_click",
+                config: config,
+                client: neverClient,
+                clickIdStore: ClickIdStore(defaults: UserDefaults(suiteName: "test.identify.empty.\(UUID().uuidString)")!)
+            )
+            XCTFail("Expected missingExternalId")
+        } catch Li2ConversionError.missingExternalId {
+            // correct — guard fires before any network call (NeverCalledClient unused)
+        } catch {
+            XCTFail("Wrong error: \(error)")
+        }
+    }
+
     func testIdentifyThrowsNoClickIdWhenNil() async {
         let neverClient = NeverCalledClient()
         let config = makeConfig()

@@ -218,6 +218,9 @@ extension Li2 {
         client: ConversionCalling? = nil,
         clickIdStore: ClickIdStore? = nil
     ) async throws -> Li2LeadResult {
+        guard !externalId.isEmpty else {
+            throw Li2ConversionError.missingExternalId
+        }
         let cfg = config ?? Li2.config
         let store = clickIdStore ?? ClickIdStore.shared
         guard let cid = explicitClickId ?? store.currentClickId else {

@@ -11,6 +11,12 @@ public enum Li2ConversionError: Error, LocalizedError, Sendable {
     /// Thrown **before** any network call.
     case noClickIdAvailable
 
+    /// `identify` requires a non-empty `externalId` to promote the anonymous
+    /// profile to an identified one. An empty id would land a `__identify__`
+    /// lead that promotes nothing (silent no-op). Thrown **before** any
+    /// network call. Mirrors the JS SDK's `customerExternalId is required` guard.
+    case missingExternalId
+
     /// The server returned a non-2xx status. `code` is the HTTP status;
     /// `message` is the top-level envelope `message` field.
     case httpError(Int, String)
@@ -28,6 +34,8 @@ public enum Li2ConversionError: Error, LocalizedError, Sendable {
             return "Invalid conversion API URL"
         case .noClickIdAvailable:
             return "No clickId available. Ensure Li2.lastClickId is set (a deep-link match persists it) or supply an explicit clickId."
+        case .missingExternalId:
+            return "externalId is required for identify. Provide the user's stable identifier to promote the anonymous profile."
         case .httpError(let code, let msg):
             return "HTTP \(code): \(msg)"
         case .decodeError(let detail, let raw):
